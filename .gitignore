@@ -1,0 +1,8 @@
+# Vercel
+.vercel/
+
+# Dependencies
+/node_modules
+
+# Secrets (Most Important!)
+.env.local
