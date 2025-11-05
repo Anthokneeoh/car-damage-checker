@@ -9,13 +9,13 @@ export default function DamageAssessor() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showJson, setShowJson] = useState(false);
-  
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
   const modelName = "InsurTech-Damage-Audit";
 
-  // Compress image before upload
+  // 📸 Compress image before upload
   const compressImage = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -23,17 +23,17 @@ export default function DamageAssessor() {
       reader.onload = (event) => {
         const img = new Image();
         img.src = event.target?.result as string;
+
         img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          
-          // Max width/height for compression
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+
           const MAX_WIDTH = 1280;
           const MAX_HEIGHT = 1280;
-          
+
           let width = img.width;
           let height = img.height;
-          
+
           if (width > height) {
             if (width > MAX_WIDTH) {
               height *= MAX_WIDTH / width;
@@ -45,20 +45,22 @@ export default function DamageAssessor() {
               height = MAX_HEIGHT;
             }
           }
-          
+
           canvas.width = width;
           canvas.height = height;
           ctx?.drawImage(img, 0, 0, width, height);
-          
-          // Compress to 85% quality
-          resolve(canvas.toDataURL('image/jpeg', 0.85));
+
+          // Compress to ~85% quality
+          resolve(canvas.toDataURL("image/jpeg", 0.85));
         };
+
         img.onerror = reject;
       };
       reader.onerror = reject;
     });
   };
 
+  // 🖼️ Handle file input
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
@@ -70,7 +72,7 @@ export default function DamageAssessor() {
       try {
         const compressed = await compressImage(selectedFile);
         setImageBase64(compressed);
-      } catch (err) {
+      } catch {
         setError("Failed to process image.");
       } finally {
         setIsLoading(false);
@@ -78,6 +80,7 @@ export default function DamageAssessor() {
     }
   };
 
+  // 🔍 Analyze image
   const handleAnalyzeClick = async () => {
     if (!imageBase64) {
       setError("Please select an image first.");
@@ -98,8 +101,9 @@ export default function DamageAssessor() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "An unknown error occurred.");
 
-      // Filter out low confidence predictions
-      const validPredictions = data.predictions?.filter((pred: any) => pred.confidence >= 0.48) || [];
+      // Filter out low-confidence detections
+      const validPredictions =
+        data.predictions?.filter((pred: any) => pred.confidence >= 0.48) || [];
 
       if (validPredictions.length === 0) {
         setError("⚠️ No high-confidence vehicle parts detected. Please upload a clearer car photo.");
@@ -107,28 +111,27 @@ export default function DamageAssessor() {
         return;
       }
 
-      // Use validPredictions instead of data.predictions for validation
+      // Validate that detections are related to vehicles
       const detectedClasses = validPredictions.map((pred: any) => pred.class.toLowerCase());
-      
-      // Vehicle part keywords based on typical car damage models
       const vehicleKeywords = [
-        'bumper', 'door', 'hood', 'fender', 'window', 'windscreen', 'windshield',
-        'headlight', 'tail', 'light', 'mirror', 'wheel', 'tire', 'tyre',
-        'roof', 'trunk', 'bonnet', 'panel', 'scratch', 'dent', 'crack',
-        'grille', 'quarter', 'pillar', 'glass', 'damage'
+        "bumper", "door", "hood", "fender", "window", "windscreen", "windshield",
+        "headlight", "tail", "light", "mirror", "wheel", "tire", "tyre", "roof",
+        "trunk", "bonnet", "panel", "scratch", "dent", "crack", "grille", "quarter",
+        "pillar", "glass", "damage"
       ];
 
-      const hasVehicleParts = detectedClasses.some(className => 
-        vehicleKeywords.some(keyword => className.includes(keyword))
+      const hasVehicleParts = detectedClasses.some((className) =>
+        vehicleKeywords.some((keyword) => className.includes(keyword))
       );
 
       if (!hasVehicleParts) {
-        setError(`⚠️ This doesn't appear to be a vehicle image. Detected: ${detectedClasses.join(', ')}. Please upload a car photo.`);
+        setError(
+          `⚠️ This doesn't appear to be a vehicle image. Detected: ${detectedClasses.join(", ")}. Please upload a car photo.`
+        );
         setIsLoading(false);
         return;
       }
 
-      // Update results with only high-confidence predictions
       setResults({ ...data, predictions: validPredictions });
     } catch (err: any) {
       setError(err.message);
@@ -137,8 +140,9 @@ export default function DamageAssessor() {
     }
   };
 
+  // 🧩 Draw bounding boxes
   useEffect(() => {
-    if (results && results.predictions && imageRef.current && canvasRef.current) {
+    if (results?.predictions && imageRef.current && canvasRef.current) {
       const img = imageRef.current;
       const canvas = canvasRef.current;
       const ctx = canvas.getContext("2d");
@@ -161,9 +165,9 @@ export default function DamageAssessor() {
         ctx.strokeRect(boxX, boxY, width, height);
 
         const label = `${className} ${(confidence * 100).toFixed(1)}%`;
-        ctx.font = "16px Arial";
         const textWidth = ctx.measureText(label).width;
-        
+
+        ctx.font = "16px Arial";
         ctx.fillStyle = "#00ff00";
         ctx.fillRect(boxX, boxY - 25, textWidth + 10, 25);
 
@@ -183,34 +187,37 @@ export default function DamageAssessor() {
           padding: 20px;
           box-sizing: border-box;
         }
+
         .results-grid {
           display: flex;
           flex-direction: column;
           gap: 20px;
           align-items: flex-start;
         }
+
         @media (min-width: 768px) {
           .results-grid {
             flex-direction: row;
           }
         }
       `}</style>
-      
+
       <div className="container">
         <h1 style={{ marginBottom: 10, fontSize: "clamp(24px, 5vw, 32px)" }}>
           🧠 AI Car Damage Assessor
         </h1>
         <p style={{ marginBottom: 30, fontSize: "clamp(14px, 3vw, 16px)" }}>
-          Upload an image to detect car damages using the <strong>{modelName}</strong> model.
+          Upload an image to detect car damages using the{" "}
+          <strong>{modelName}</strong> model.
         </p>
 
+        {/* Upload + Analyze */}
         <div style={{ marginBottom: 20, display: "flex", flexDirection: "column", gap: "10px" }}>
-          <input 
-            type="file" 
-            accept="image/*" 
+          <input
+            type="file"
+            accept="image/*"
             onChange={handleFileChange}
             style={{ fontSize: "14px" }}
-            capture="environment"
           />
           <button
             onClick={handleAnalyzeClick}
@@ -225,25 +232,29 @@ export default function DamageAssessor() {
               fontSize: "16px",
               fontWeight: "500",
               width: "100%",
-              maxWidth: "300px"
+              maxWidth: "300px",
             }}
           >
             {isLoading ? "Processing..." : "Analyze Image"}
           </button>
         </div>
 
+        {/* Error Message */}
         {error && (
-          <p style={{ 
-            color: "red",
-            padding: "15px",
-            backgroundColor: "#fee",
-            borderRadius: 6,
-            marginBottom: 20
-          }}>
+          <p
+            style={{
+              color: "red",
+              padding: "15px",
+              backgroundColor: "#fee",
+              borderRadius: 6,
+              marginBottom: 20,
+            }}
+          >
             {error}
           </p>
         )}
 
+        {/* Results */}
         <div className="results-grid">
           {imageBase64 && (
             <div style={{ flex: 1, width: "100%", minWidth: 0 }}>
@@ -253,23 +264,22 @@ export default function DamageAssessor() {
                   ref={imageRef}
                   src={imageBase64}
                   alt="Upload preview"
-                  style={{ 
-                    display: results ? "none" : "block", 
+                  style={{
+                    display: results ? "none" : "block",
                     width: "100%",
                     height: "auto",
-                    borderRadius: 8, 
-                    border: "1px solid #ddd" 
+                    borderRadius: 8,
+                    border: "1px solid #ddd",
                   }}
                 />
-                
                 {results && (
                   <canvas
                     ref={canvasRef}
-                    style={{ 
+                    style={{
                       width: "100%",
                       height: "auto",
-                      borderRadius: 8, 
-                      border: "1px solid #ddd" 
+                      borderRadius: 8,
+                      border: "1px solid #ddd",
                     }}
                   />
                 )}
@@ -285,7 +295,8 @@ export default function DamageAssessor() {
                 <ul style={{ paddingLeft: 20, fontSize: "clamp(14px, 3vw, 16px)" }}>
                   {results.predictions.map((pred: any, i: number) => (
                     <li key={i} style={{ marginBottom: 8 }}>
-                      <strong>{pred.class}</strong> — Confidence: {(pred.confidence * 100).toFixed(1)}%
+                      <strong>{pred.class}</strong> — Confidence:{" "}
+                      {(pred.confidence * 100).toFixed(1)}%
                     </li>
                   ))}
                 </ul>
@@ -300,22 +311,24 @@ export default function DamageAssessor() {
                   padding: "10px 16px",
                   borderRadius: 6,
                   cursor: "pointer",
-                  fontSize: "14px"
+                  fontSize: "14px",
                 }}
               >
                 {showJson ? "Hide JSON" : "Show JSON"}
               </button>
 
               {showJson && (
-                <pre style={{
-                  backgroundColor: "#f8f8f8",
-                  padding: 10,
-                  borderRadius: 6,
-                  overflowX: "auto",
-                  marginTop: 10,
-                  fontSize: "clamp(10px, 2.5vw, 12px)",
-                  maxWidth: "100%"
-                }}>
+                <pre
+                  style={{
+                    backgroundColor: "#f8f8f8",
+                    padding: 10,
+                    borderRadius: 6,
+                    overflowX: "auto",
+                    marginTop: 10,
+                    fontSize: "clamp(10px, 2.5vw, 12px)",
+                    maxWidth: "100%",
+                  }}
+                >
                   {JSON.stringify(results, null, 2)}
                 </pre>
               )}
