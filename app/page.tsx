@@ -49,6 +49,32 @@ export default function DamageAssessor() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "An unknown error occurred.");
 
+      // Validate if it's a vehicle image
+      if (data.predictions && data.predictions.length > 0) {
+        const hasVehicleParts = data.predictions.some((pred: any) => {
+          const className = pred.class.toLowerCase();
+          return className.includes('bumper') || 
+                 className.includes('door') || 
+                 className.includes('hood') || 
+                 className.includes('window') || 
+                 className.includes('headlight') ||
+                 className.includes('tail_light') ||
+                 className.includes('tyre') ||
+                 className.includes('windscreen') ||
+                 className.includes('mirror');
+        });
+
+        if (!hasVehicleParts) {
+          setError("⚠️ This doesn't appear to be a vehicle image. Please upload a car photo.");
+          setIsLoading(false);
+          return;
+        }
+      } else {
+        setError("⚠️ No vehicle parts detected. Please upload a clear car photo.");
+        setIsLoading(false);
+        return;
+      }
+
       setResults(data);
     } catch (err: any) {
       setError(err.message);
@@ -102,52 +128,109 @@ export default function DamageAssessor() {
   }, [results]);
 
   return (
-    <div style={{ fontFamily: "Inter, sans-serif", maxWidth: 900, margin: "40px auto", padding: 20 }}>
-      <h1 style={{ marginBottom: 10 }}>🧠 AI Car Damage Assessor</h1>
-      <p style={{ marginBottom: 30 }}>
+    <div style={{ 
+      fontFamily: "Inter, sans-serif", 
+      maxWidth: "100%", 
+      margin: "0 auto", 
+      padding: "20px",
+      boxSizing: "border-box"
+    }}>
+      <h1 style={{ 
+        marginBottom: 10, 
+        fontSize: "clamp(24px, 5vw, 32px)" 
+      }}>
+        🧠 AI Car Damage Assessor
+      </h1>
+      <p style={{ 
+        marginBottom: 30,
+        fontSize: "clamp(14px, 3vw, 16px)"
+      }}>
         Upload an image to detect car damages using the <strong>{modelName}</strong> model.
       </p>
 
       {/* Upload Section */}
-      <div style={{ marginBottom: 20 }}>
-        <input type="file" accept="image/*" onChange={handleFileChange} />
+      <div style={{ 
+        marginBottom: 20,
+        display: "flex",
+        flexDirection: "column",
+        gap: "10px"
+      }}>
+        <input 
+          type="file" 
+          accept="image/*" 
+          onChange={handleFileChange}
+          style={{ fontSize: "14px" }}
+        />
         <button
           onClick={handleAnalyzeClick}
           disabled={isLoading}
           style={{
-            padding: "10px 20px",
-            marginLeft: 10,
+            padding: "12px 20px",
             borderRadius: 6,
             border: "1px solid #ccc",
             backgroundColor: isLoading ? "#ccc" : "#0070f3",
             color: "#fff",
             cursor: isLoading ? "not-allowed" : "pointer",
+            fontSize: "16px",
+            fontWeight: "500",
+            width: "100%",
+            maxWidth: "300px"
           }}
         >
           {isLoading ? "Analyzing..." : "Analyze Image"}
         </button>
       </div>
 
-      {error && <p style={{ color: "red" }}>⚠️ {error}</p>}
+      {error && (
+        <p style={{ 
+          color: "red",
+          padding: "15px",
+          backgroundColor: "#fee",
+          borderRadius: 6,
+          marginBottom: 20
+        }}>
+          {error}
+        </p>
+      )}
 
-      <div style={{ display: "flex", gap: 30, alignItems: "flex-start" }}>
+      <div style={{ 
+        display: "flex", 
+        flexDirection: window.innerWidth < 768 ? "column" : "row",
+        gap: 20, 
+        alignItems: "flex-start" 
+      }}>
         {imageBase64 && (
-          <div style={{ flex: 1 }}>
-            <h3>Your Image</h3>
-            <div style={{ position: "relative", maxWidth: "100%" }}>
+          <div style={{ 
+            flex: 1,
+            width: "100%",
+            minWidth: 0
+          }}>
+            <h3 style={{ fontSize: "clamp(18px, 4vw, 20px)" }}>Your Image</h3>
+            <div style={{ position: "relative", width: "100%" }}>
               {/* Hidden image for loading */}
               <img
                 ref={imageRef}
                 src={imageBase64}
                 alt="Upload preview"
-                style={{ display: results ? "none" : "block", maxWidth: "100%", borderRadius: 8, border: "1px solid #ddd" }}
+                style={{ 
+                  display: results ? "none" : "block", 
+                  width: "100%",
+                  height: "auto",
+                  borderRadius: 8, 
+                  border: "1px solid #ddd" 
+                }}
               />
               
               {/* Canvas with bounding boxes */}
               {results && (
                 <canvas
                   ref={canvasRef}
-                  style={{ maxWidth: "100%", borderRadius: 8, border: "1px solid #ddd" }}
+                  style={{ 
+                    width: "100%",
+                    height: "auto",
+                    borderRadius: 8, 
+                    border: "1px solid #ddd" 
+                  }}
                 />
               )}
             </div>
@@ -155,14 +238,21 @@ export default function DamageAssessor() {
         )}
 
         {results && (
-          <div style={{ flex: 1 }}>
-            <h3>Results</h3>
+          <div style={{ 
+            flex: 1,
+            width: "100%",
+            minWidth: 0
+          }}>
+            <h3 style={{ fontSize: "clamp(18px, 4vw, 20px)" }}>Results</h3>
 
             {/* Damage Predictions */}
             {results?.predictions?.length > 0 && (
-              <ul>
+              <ul style={{ 
+                paddingLeft: 20,
+                fontSize: "clamp(14px, 3vw, 16px)"
+              }}>
                 {results.predictions.map((pred: any, i: number) => (
-                  <li key={i}>
+                  <li key={i} style={{ marginBottom: 8 }}>
                     <strong>{pred.class}</strong> — Confidence: {(pred.confidence * 100).toFixed(1)}%
                   </li>
                 ))}
@@ -176,9 +266,10 @@ export default function DamageAssessor() {
                 marginTop: 15,
                 background: "#f0f0f0",
                 border: "none",
-                padding: "8px 12px",
+                padding: "10px 16px",
                 borderRadius: 6,
                 cursor: "pointer",
+                fontSize: "14px"
               }}
             >
               {showJson ? "Hide JSON" : "Show JSON"}
@@ -192,7 +283,8 @@ export default function DamageAssessor() {
                   borderRadius: 6,
                   overflowX: "auto",
                   marginTop: 10,
-                  fontSize: 12,
+                  fontSize: "clamp(10px, 2.5vw, 12px)",
+                  maxWidth: "100%"
                 }}
               >
                 {JSON.stringify(results, null, 2)}
