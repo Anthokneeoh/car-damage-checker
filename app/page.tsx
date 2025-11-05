@@ -15,17 +15,66 @@ export default function DamageAssessor() {
 
   const modelName = "InsurTech-Damage-Audit";
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Compress image before upload
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          // Max width/height for compression
+          const MAX_WIDTH = 1280;
+          const MAX_HEIGHT = 1280;
+          
+          let width = img.width;
+          let height = img.height;
+          
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          // Compress to 85% quality
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
+        };
+        img.onerror = reject;
+      };
+      reader.onerror = reject;
+    });
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
       setFile(selectedFile);
       setError(null);
       setResults(null);
+      setIsLoading(true);
 
-      const reader = new FileReader();
-      reader.readAsDataURL(selectedFile);
-      reader.onload = () => setImageBase64(reader.result as string);
-      reader.onerror = () => setError("Failed to read file.");
+      try {
+        const compressed = await compressImage(selectedFile);
+        setImageBase64(compressed);
+      } catch (err) {
+        setError("Failed to process image.");
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -49,33 +98,38 @@ export default function DamageAssessor() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "An unknown error occurred.");
 
-      // Validate if it's a vehicle image
-      if (data.predictions && data.predictions.length > 0) {
-        const hasVehicleParts = data.predictions.some((pred: any) => {
-          const className = pred.class.toLowerCase();
-          return className.includes('bumper') || 
-                 className.includes('door') || 
-                 className.includes('hood') || 
-                 className.includes('window') || 
-                 className.includes('headlight') ||
-                 className.includes('tail_light') ||
-                 className.includes('tyre') ||
-                 className.includes('windscreen') ||
-                 className.includes('mirror');
-        });
+      // Filter out low confidence predictions
+      const validPredictions = data.predictions?.filter((pred: any) => pred.confidence >= 0.48) || [];
 
-        if (!hasVehicleParts) {
-          setError("⚠️ This doesn't appear to be a vehicle image. Please upload a car photo.");
-          setIsLoading(false);
-          return;
-        }
-      } else {
-        setError("⚠️ No vehicle parts detected. Please upload a clear car photo.");
+      if (validPredictions.length === 0) {
+        setError("⚠️ No high-confidence vehicle parts detected. Please upload a clearer car photo.");
         setIsLoading(false);
         return;
       }
 
-      setResults(data);
+      // Use validPredictions instead of data.predictions for validation
+      const detectedClasses = validPredictions.map((pred: any) => pred.class.toLowerCase());
+      
+      // Vehicle part keywords based on typical car damage models
+      const vehicleKeywords = [
+        'bumper', 'door', 'hood', 'fender', 'window', 'windscreen', 'windshield',
+        'headlight', 'tail', 'light', 'mirror', 'wheel', 'tire', 'tyre',
+        'roof', 'trunk', 'bonnet', 'panel', 'scratch', 'dent', 'crack',
+        'grille', 'quarter', 'pillar', 'glass', 'damage'
+      ];
+
+      const hasVehicleParts = detectedClasses.some(className => 
+        vehicleKeywords.some(keyword => className.includes(keyword))
+      );
+
+      if (!hasVehicleParts) {
+        setError(`⚠️ This doesn't appear to be a vehicle image. Detected: ${detectedClasses.join(', ')}. Please upload a car photo.`);
+        setIsLoading(false);
+        return;
+      }
+
+      // Update results with only high-confidence predictions
+      setResults({ ...data, predictions: validPredictions });
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -156,24 +210,25 @@ export default function DamageAssessor() {
             accept="image/*" 
             onChange={handleFileChange}
             style={{ fontSize: "14px" }}
+            capture="environment"
           />
           <button
             onClick={handleAnalyzeClick}
-            disabled={isLoading}
+            disabled={isLoading || !imageBase64}
             style={{
               padding: "12px 20px",
               borderRadius: 6,
               border: "1px solid #ccc",
-              backgroundColor: isLoading ? "#ccc" : "#0070f3",
+              backgroundColor: isLoading || !imageBase64 ? "#ccc" : "#0070f3",
               color: "#fff",
-              cursor: isLoading ? "not-allowed" : "pointer",
+              cursor: isLoading || !imageBase64 ? "not-allowed" : "pointer",
               fontSize: "16px",
               fontWeight: "500",
               width: "100%",
               maxWidth: "300px"
             }}
           >
-            {isLoading ? "Analyzing..." : "Analyze Image"}
+            {isLoading ? "Processing..." : "Analyze Image"}
           </button>
         </div>
 
