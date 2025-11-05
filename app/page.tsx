@@ -83,7 +83,6 @@ export default function DamageAssessor() {
     }
   };
 
-  // Draw bounding boxes when results are available
   useEffect(() => {
     if (results && results.predictions && imageRef.current && canvasRef.current) {
       const img = imageRef.current;
@@ -92,27 +91,21 @@ export default function DamageAssessor() {
 
       if (!ctx) return;
 
-      // Set canvas size to match image
       canvas.width = img.naturalWidth;
       canvas.height = img.naturalHeight;
 
-      // Draw the image
       ctx.drawImage(img, 0, 0);
 
-      // Draw bounding boxes
       results.predictions.forEach((pred: any) => {
         const { x, y, width, height, class: className, confidence } = pred;
 
-        // Calculate box coordinates
         const boxX = x - width / 2;
         const boxY = y - height / 2;
 
-        // Draw rectangle
         ctx.strokeStyle = "#00ff00";
         ctx.lineWidth = 3;
         ctx.strokeRect(boxX, boxY, width, height);
 
-        // Draw label background
         const label = `${className} ${(confidence * 100).toFixed(1)}%`;
         ctx.font = "16px Arial";
         const textWidth = ctx.measureText(label).width;
@@ -120,7 +113,6 @@ export default function DamageAssessor() {
         ctx.fillStyle = "#00ff00";
         ctx.fillRect(boxX, boxY - 25, textWidth + 10, 25);
 
-        // Draw label text
         ctx.fillStyle = "#000000";
         ctx.fillText(label, boxX + 5, boxY - 7);
       });
@@ -128,156 +120,139 @@ export default function DamageAssessor() {
   }, [results]);
 
   return (
-    <div style={{ 
-      fontFamily: "Inter, sans-serif", 
-      maxWidth: "100%", 
-      margin: "0 auto", 
-      padding: "20px",
-      boxSizing: "border-box"
-    }}>
-      <h1 style={{ 
-        marginBottom: 10, 
-        fontSize: "clamp(24px, 5vw, 32px)" 
-      }}>
-        🧠 AI Car Damage Assessor
-      </h1>
-      <p style={{ 
-        marginBottom: 30,
-        fontSize: "clamp(14px, 3vw, 16px)"
-      }}>
-        Upload an image to detect car damages using the <strong>{modelName}</strong> model.
-      </p>
-
-      {/* Upload Section */}
-      <div style={{ 
-        marginBottom: 20,
-        display: "flex",
-        flexDirection: "column",
-        gap: "10px"
-      }}>
-        <input 
-          type="file" 
-          accept="image/*" 
-          onChange={handleFileChange}
-          style={{ fontSize: "14px" }}
-        />
-        <button
-          onClick={handleAnalyzeClick}
-          disabled={isLoading}
-          style={{
-            padding: "12px 20px",
-            borderRadius: 6,
-            border: "1px solid #ccc",
-            backgroundColor: isLoading ? "#ccc" : "#0070f3",
-            color: "#fff",
-            cursor: isLoading ? "not-allowed" : "pointer",
-            fontSize: "16px",
-            fontWeight: "500",
-            width: "100%",
-            maxWidth: "300px"
-          }}
-        >
-          {isLoading ? "Analyzing..." : "Analyze Image"}
-        </button>
-      </div>
-
-      {error && (
-        <p style={{ 
-          color: "red",
-          padding: "15px",
-          backgroundColor: "#fee",
-          borderRadius: 6,
-          marginBottom: 20
-        }}>
-          {error}
+    <>
+      <style jsx>{`
+        .container {
+          font-family: Inter, sans-serif;
+          max-width: 100%;
+          margin: 0 auto;
+          padding: 20px;
+          box-sizing: border-box;
+        }
+        .results-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+          align-items: flex-start;
+        }
+        @media (min-width: 768px) {
+          .results-grid {
+            flex-direction: row;
+          }
+        }
+      `}</style>
+      
+      <div className="container">
+        <h1 style={{ marginBottom: 10, fontSize: "clamp(24px, 5vw, 32px)" }}>
+          🧠 AI Car Damage Assessor
+        </h1>
+        <p style={{ marginBottom: 30, fontSize: "clamp(14px, 3vw, 16px)" }}>
+          Upload an image to detect car damages using the <strong>{modelName}</strong> model.
         </p>
-      )}
 
-      <div style={{ 
-        display: "flex", 
-        flexDirection: window.innerWidth < 768 ? "column" : "row",
-        gap: 20, 
-        alignItems: "flex-start" 
-      }}>
-        {imageBase64 && (
-          <div style={{ 
-            flex: 1,
-            width: "100%",
-            minWidth: 0
+        <div style={{ marginBottom: 20, display: "flex", flexDirection: "column", gap: "10px" }}>
+          <input 
+            type="file" 
+            accept="image/*" 
+            onChange={handleFileChange}
+            style={{ fontSize: "14px" }}
+          />
+          <button
+            onClick={handleAnalyzeClick}
+            disabled={isLoading}
+            style={{
+              padding: "12px 20px",
+              borderRadius: 6,
+              border: "1px solid #ccc",
+              backgroundColor: isLoading ? "#ccc" : "#0070f3",
+              color: "#fff",
+              cursor: isLoading ? "not-allowed" : "pointer",
+              fontSize: "16px",
+              fontWeight: "500",
+              width: "100%",
+              maxWidth: "300px"
+            }}
+          >
+            {isLoading ? "Analyzing..." : "Analyze Image"}
+          </button>
+        </div>
+
+        {error && (
+          <p style={{ 
+            color: "red",
+            padding: "15px",
+            backgroundColor: "#fee",
+            borderRadius: 6,
+            marginBottom: 20
           }}>
-            <h3 style={{ fontSize: "clamp(18px, 4vw, 20px)" }}>Your Image</h3>
-            <div style={{ position: "relative", width: "100%" }}>
-              {/* Hidden image for loading */}
-              <img
-                ref={imageRef}
-                src={imageBase64}
-                alt="Upload preview"
-                style={{ 
-                  display: results ? "none" : "block", 
-                  width: "100%",
-                  height: "auto",
-                  borderRadius: 8, 
-                  border: "1px solid #ddd" 
-                }}
-              />
-              
-              {/* Canvas with bounding boxes */}
-              {results && (
-                <canvas
-                  ref={canvasRef}
+            {error}
+          </p>
+        )}
+
+        <div className="results-grid">
+          {imageBase64 && (
+            <div style={{ flex: 1, width: "100%", minWidth: 0 }}>
+              <h3 style={{ fontSize: "clamp(18px, 4vw, 20px)" }}>Your Image</h3>
+              <div style={{ position: "relative", width: "100%" }}>
+                <img
+                  ref={imageRef}
+                  src={imageBase64}
+                  alt="Upload preview"
                   style={{ 
+                    display: results ? "none" : "block", 
                     width: "100%",
                     height: "auto",
                     borderRadius: 8, 
                     border: "1px solid #ddd" 
                   }}
                 />
-              )}
+                
+                {results && (
+                  <canvas
+                    ref={canvasRef}
+                    style={{ 
+                      width: "100%",
+                      height: "auto",
+                      borderRadius: 8, 
+                      border: "1px solid #ddd" 
+                    }}
+                  />
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {results && (
-          <div style={{ 
-            flex: 1,
-            width: "100%",
-            minWidth: 0
-          }}>
-            <h3 style={{ fontSize: "clamp(18px, 4vw, 20px)" }}>Results</h3>
+          {results && (
+            <div style={{ flex: 1, width: "100%", minWidth: 0 }}>
+              <h3 style={{ fontSize: "clamp(18px, 4vw, 20px)" }}>Results</h3>
 
-            {/* Damage Predictions */}
-            {results?.predictions?.length > 0 && (
-              <ul style={{ 
-                paddingLeft: 20,
-                fontSize: "clamp(14px, 3vw, 16px)"
-              }}>
-                {results.predictions.map((pred: any, i: number) => (
-                  <li key={i} style={{ marginBottom: 8 }}>
-                    <strong>{pred.class}</strong> — Confidence: {(pred.confidence * 100).toFixed(1)}%
-                  </li>
-                ))}
-              </ul>
-            )}
+              {results?.predictions?.length > 0 && (
+                <ul style={{ paddingLeft: 20, fontSize: "clamp(14px, 3vw, 16px)" }}>
+                  {results.predictions.map((pred: any, i: number) => (
+                    <li key={i} style={{ marginBottom: 8 }}>
+                      <strong>{pred.class}</strong> — Confidence: {(pred.confidence * 100).toFixed(1)}%
+                    </li>
+                  ))}
+                </ul>
+              )}
 
-            {/* Raw JSON Output */}
-            <button
-              onClick={() => setShowJson(!showJson)}
-              style={{
-                marginTop: 15,
-                background: "#f0f0f0",
-                border: "none",
-                padding: "10px 16px",
-                borderRadius: 6,
-                cursor: "pointer",
-                fontSize: "14px"
-              }}
-            >
-              {showJson ? "Hide JSON" : "Show JSON"}
-            </button>
-
-            {showJson && (
-              <pre
+              <button
+                onClick={() => setShowJson(!showJson)}
                 style={{
+                  marginTop: 15,
+                  background: "#f0f0f0",
+                  border: "none",
+                  padding: "10px 16px",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                  fontSize: "14px"
+                }}
+              >
+                {showJson ? "Hide JSON" : "Show JSON"}
+              </button>
+
+              {showJson && (
+                <pre style={{
                   backgroundColor: "#f8f8f8",
                   padding: 10,
                   borderRadius: 6,
@@ -285,14 +260,14 @@ export default function DamageAssessor() {
                   marginTop: 10,
                   fontSize: "clamp(10px, 2.5vw, 12px)",
                   maxWidth: "100%"
-                }}
-              >
-                {JSON.stringify(results, null, 2)}
-              </pre>
-            )}
-          </div>
-        )}
+                }}>
+                  {JSON.stringify(results, null, 2)}
+                </pre>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
