@@ -106,7 +106,7 @@ export default function DamageAssessor() {
         data.predictions?.filter((pred: any) => pred.confidence >= 0.48) || [];
 
       if (validPredictions.length === 0) {
-        setError("⚠️ No high-confidence vehicle parts detected. Please upload a clearer car photo.");
+        setError("⚠️ Likely not a car photo. Please upload a clearer car photo.");
         setIsLoading(false);
         return;
       }
@@ -126,7 +126,7 @@ export default function DamageAssessor() {
 
       if (!hasVehicleParts) {
         setError(
-          `⚠️ This doesn't appear to be a vehicle image. Detected: ${detectedClasses.join(", ")}. Please upload a car photo.`
+          `⚠️ This doesn't appear to be a vehicle image. Detected: ${detectedClasses.join(", ")}. Please upload a car photo. `  
         );
         setIsLoading(false);
         return;
