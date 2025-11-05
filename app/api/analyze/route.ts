@@ -21,10 +21,9 @@ export async function POST(request: Request) {
       {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/x-www-form-urlencoded",
         },
-        // Roboflow expects a Base64 string without the `data:image/...` prefix
-        body: JSON.stringify({ image: image.split(",")[1] }),
+        body: image.split(",")[1],  // ← FIXED: Send raw base64, not JSON
       }
     );
 
