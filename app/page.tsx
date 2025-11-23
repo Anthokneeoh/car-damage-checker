@@ -9,13 +9,13 @@ export default function DamageAssessor() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showJson, setShowJson] = useState(false);
+  const [showSummary, setShowSummary] = useState(true);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
   const modelName = "InsurTech-Damage-Audit";
 
-  // 📸 Compress image before upload
   const compressImage = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -50,7 +50,6 @@ export default function DamageAssessor() {
           canvas.height = height;
           ctx?.drawImage(img, 0, 0, width, height);
 
-          // Compress to ~85% quality
           resolve(canvas.toDataURL("image/jpeg", 0.85));
         };
 
@@ -60,7 +59,6 @@ export default function DamageAssessor() {
     });
   };
 
-  // 🖼️ Handle file input
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
@@ -80,7 +78,6 @@ export default function DamageAssessor() {
     }
   };
 
-  // 🔍 Analyze image
   const handleAnalyzeClick = async () => {
     if (!imageBase64) {
       setError("Please select an image first.");
@@ -101,38 +98,17 @@ export default function DamageAssessor() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "An unknown error occurred.");
 
-      // Filter out low-confidence detections
-      const validPredictions =
-        data.predictions?.filter((pred: any) => pred.confidence >= 0.48) || [];
+      // Filter low-confidence predictions
+      const validPredictions = data.predictions?.filter((pred: any) => pred.confidence >= 0.48) || [];
 
       if (validPredictions.length === 0) {
-        setError("⚠️ Likely not a car photo. Please upload a clearer car photo.");
-        setIsLoading(false);
-        return;
-      }
-
-      // Validate that detections are related to vehicles
-      const detectedClasses = validPredictions.map((pred: any) => pred.class.toLowerCase());
-      const vehicleKeywords = [
-        "bumper", "door", "hood", "fender", "window", "windscreen", "windshield",
-        "headlight", "tail", "light", "mirror", "wheel", "tire", "tyre", "roof",
-        "trunk", "bonnet", "panel", "scratch", "dent", "crack", "grille", "quarter",
-        "pillar", "glass", "damage"
-      ];
-
-      const hasVehicleParts = detectedClasses.some((className) =>
-        vehicleKeywords.some((keyword) => className.includes(keyword))
-      );
-
-      if (!hasVehicleParts) {
-        setError(
-          `⚠️ This doesn't appear to be a vehicle image. Detected: ${detectedClasses.join(", ")}. Please upload a car photo. `  
-        );
+        setError("⚠️ No damage detected with sufficient confidence. Please upload a clearer car photo.");
         setIsLoading(false);
         return;
       }
 
       setResults({ ...data, predictions: validPredictions });
+      setShowSummary(true);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -140,7 +116,6 @@ export default function DamageAssessor() {
     }
   };
 
-  // 🧩 Draw bounding boxes
   useEffect(() => {
     if (results?.predictions && imageRef.current && canvasRef.current) {
       const img = imageRef.current;
@@ -207,11 +182,9 @@ export default function DamageAssessor() {
           🧠 AI Car Damage Assessor
         </h1>
         <p style={{ marginBottom: 30, fontSize: "clamp(14px, 3vw, 16px)" }}>
-          Upload an image to detect car damages using the{" "}
-          <strong>{modelName}</strong> model.
+          Upload an image to detect car damages using the <strong>{modelName}</strong> model with 417 granular classes.
         </p>
 
-        {/* Upload + Analyze */}
         <div style={{ marginBottom: 20, display: "flex", flexDirection: "column", gap: "10px" }}>
           <input
             type="file"
@@ -239,22 +212,121 @@ export default function DamageAssessor() {
           </button>
         </div>
 
-        {/* Error Message */}
         {error && (
-          <p
-            style={{
-              color: "red",
-              padding: "15px",
-              backgroundColor: "#fee",
-              borderRadius: 6,
-              marginBottom: 20,
-            }}
-          >
+          <p style={{
+            color: "red",
+            padding: "15px",
+            backgroundColor: "#fee",
+            borderRadius: 6,
+            marginBottom: 20,
+          }}>
             {error}
           </p>
         )}
 
-        {/* Results */}
+        {/* Toggle Buttons */}
+        {results && (
+          <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
+            <button
+              onClick={() => setShowSummary(!showSummary)}
+              style={{
+                padding: "10px 20px",
+                borderRadius: 6,
+                border: showSummary ? "2px solid #9333ea" : "1px solid #ccc",
+                backgroundColor: showSummary ? "#9333ea" : "#f0f0f0",
+                color: showSummary ? "#fff" : "#333",
+                cursor: "pointer",
+                fontSize: "14px",
+                fontWeight: "500",
+              }}
+            >
+              {showSummary ? "Hide AI Summary" : "Show AI Summary"}
+            </button>
+            <button
+              onClick={() => setShowJson(!showJson)}
+              style={{
+                padding: "10px 20px",
+                borderRadius: 6,
+                border: showJson ? "2px solid #1f2937" : "1px solid #ccc",
+                backgroundColor: showJson ? "#1f2937" : "#f0f0f0",
+                color: showJson ? "#fff" : "#333",
+                cursor: "pointer",
+                fontSize: "14px",
+                fontWeight: "500",
+              }}
+            >
+              {showJson ? "Hide JSON" : "Show JSON"}
+            </button>
+          </div>
+        )}
+
+        {/* AI Summary */}
+        {results && showSummary && results.ai_summary && (
+          <div style={{
+            backgroundColor: "#fff",
+            padding: 20,
+            borderRadius: 12,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            borderLeft: "4px solid #9333ea",
+            marginBottom: 20
+          }}>
+            <h2 style={{ fontSize: "20px", marginBottom: 10, color: "#9333ea" }}>
+              ✨ AI Inspection Report
+            </h2>
+            <p style={{ fontSize: "16px", lineHeight: "1.6", color: "#333" }}>
+              {results.ai_summary}
+            </p>
+
+            {/* Detailed Findings */}
+            {results.structured_findings && (
+              <div style={{ marginTop: 15 }}>
+                {results.structured_findings.map((item: any, idx: number) => (
+                  <div key={idx} style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    padding: "8px 0",
+                    borderBottom: "1px solid #eee",
+                    fontSize: "14px",
+                    flexWrap: "wrap",
+                    gap: 5
+                  }}>
+                    <span style={{ fontWeight: "600", color: "#333" }}>{item.part}</span>
+                    <span style={{
+                      padding: "2px 8px",
+                      borderRadius: 4,
+                      fontSize: "12px",
+                      backgroundColor:
+                        item.severity === 'HIGH' || item.severity === 'CRITICAL' ? '#fee' :
+                          item.severity === 'MEDIUM' ? '#fef3c7' : '#d1fae5',
+                      color:
+                        item.severity === 'HIGH' || item.severity === 'CRITICAL' ? '#991b1b' :
+                          item.severity === 'MEDIUM' ? '#92400e' : '#065f46'
+                    }}>
+                      {item.defect_type} ({item.repair_action})
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* JSON Display */}
+        {results && showJson && (
+          <div style={{
+            backgroundColor: "#1f2937",
+            color: "#10b981",
+            padding: 15,
+            borderRadius: 8,
+            overflowX: "auto",
+            marginBottom: 20,
+            fontSize: "12px",
+            fontFamily: "monospace"
+          }}>
+            <pre>{JSON.stringify(results, null, 2)}</pre>
+          </div>
+        )}
+
         <div className="results-grid">
           {imageBase64 && (
             <div style={{ flex: 1, width: "100%", minWidth: 0 }}>
@@ -289,48 +361,15 @@ export default function DamageAssessor() {
 
           {results && (
             <div style={{ flex: 1, width: "100%", minWidth: 0 }}>
-              <h3 style={{ fontSize: "clamp(18px, 4vw, 20px)" }}>Results</h3>
-
+              <h3 style={{ fontSize: "clamp(18px, 4vw, 20px)" }}>Raw Detections</h3>
               {results?.predictions?.length > 0 && (
                 <ul style={{ paddingLeft: 20, fontSize: "clamp(14px, 3vw, 16px)" }}>
                   {results.predictions.map((pred: any, i: number) => (
                     <li key={i} style={{ marginBottom: 8 }}>
-                      <strong>{pred.class}</strong> — Confidence:{" "}
-                      {(pred.confidence * 100).toFixed(1)}%
+                      <strong>{pred.class}</strong> — Confidence: {(pred.confidence * 100).toFixed(1)}%
                     </li>
                   ))}
                 </ul>
-              )}
-
-              <button
-                onClick={() => setShowJson(!showJson)}
-                style={{
-                  marginTop: 15,
-                  background: "#f0f0f0",
-                  border: "none",
-                  padding: "10px 16px",
-                  borderRadius: 6,
-                  cursor: "pointer",
-                  fontSize: "14px",
-                }}
-              >
-                {showJson ? "Hide JSON" : "Show JSON"}
-              </button>
-
-              {showJson && (
-                <pre
-                  style={{
-                    backgroundColor: "#f8f8f8",
-                    padding: 10,
-                    borderRadius: 6,
-                    overflowX: "auto",
-                    marginTop: 10,
-                    fontSize: "clamp(10px, 2.5vw, 12px)",
-                    maxWidth: "100%",
-                  }}
-                >
-                  {JSON.stringify(results, null, 2)}
-                </pre>
               )}
             </div>
           )}
