@@ -99,7 +99,7 @@ export default function DamageAssessor() {
       if (!response.ok) throw new Error(data.error || "An unknown error occurred.");
 
       // Filter low-confidence predictions
-      const validPredictions = data.predictions?.filter((pred: any) => pred.confidence >= 0.48) || [];
+      const validPredictions = data.predictions?.filter((pred: any) => pred.confidence >= 0.3) || [];
 
       if (validPredictions.length === 0) {
         setError("⚠️ No damage detected with sufficient confidence. Please upload a clearer car photo.");
@@ -182,7 +182,7 @@ export default function DamageAssessor() {
           🧠 AI Car Damage Assessor
         </h1>
         <p style={{ marginBottom: 30, fontSize: "clamp(14px, 3vw, 16px)" }}>
-          Upload an image to detect car damages using the <strong>{modelName}</strong> model trained and deployed by Yerima of MCA.
+          Upload an image to detect car damages using the <strong>{modelName}</strong> v1.1 model trained and deployed by Yerima of MCA.
         </p>
 
         <div style={{ marginBottom: 20, display: "flex", flexDirection: "column", gap: "10px" }}>
