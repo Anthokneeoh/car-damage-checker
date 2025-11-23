@@ -182,7 +182,7 @@ export default function DamageAssessor() {
           🧠 AI Car Damage Assessor
         </h1>
         <p style={{ marginBottom: 30, fontSize: "clamp(14px, 3vw, 16px)" }}>
-          Upload an image to detect car damages using the <strong>{modelName}</strong> model with 417 granular classes.
+          Upload an image to detect car damages using the <strong>{modelName}</strong> model trained and deployed by Yerima of MCA.
         </p>
 
         <div style={{ marginBottom: 20, display: "flex", flexDirection: "column", gap: "10px" }}>
