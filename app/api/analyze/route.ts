@@ -80,10 +80,10 @@ function decodePrediction(pred: any): DecodedDamage {
 function generateAISummary(damages: DecodedDamage[]): string {
   if (damages.length === 0) return "No visible damage detected. Vehicle appears to be in good condition.";
 
-  const critical = damages.filter(d => d.severity === 'CRITICAL');
-  const severe = damages.filter(d => d.severity === 'HIGH');
-  const moderate = damages.filter(d => d.severity === 'MEDIUM');
-  const minor = damages.filter(d => d.severity === 'LOW');
+  const critical = damages.filter((d: DecodedDamage) => d.severity === 'CRITICAL');
+  const severe = damages.filter((d: DecodedDamage) => d.severity === 'HIGH');
+  const moderate = damages.filter((d: DecodedDamage) => d.severity === 'MEDIUM');
+  const minor = damages.filter((d: DecodedDamage) => d.severity === 'LOW');
 
   let narrative = `AI Inspection found ${damages.length} issue${damages.length > 1 ? 's' : ''}. `;
 
@@ -92,7 +92,7 @@ function generateAISummary(damages: DecodedDamage[]): string {
   }
 
   if (severe.length > 0) {
-    const parts = [...new Set(severe.map(d => d.part))].join(', ');
+    const parts = Array.from(new Set(severe.map(d => d.part))).join(', ');
     narrative += `Severe damage found on: ${parts}. These components likely require replacement or major bodywork. `;
   }
 
