@@ -4,5 +4,17 @@
 # Dependencies
 /node_modules
 
-# Secrets (Most Important!)
+# Secrets 
 .env.local
+
+# Next.js build output 
+.next/
+out/
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
