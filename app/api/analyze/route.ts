@@ -16,38 +16,63 @@ interface DecodedDamage {
   raw_class: string;
 }
 
-// Decode 417-class predictions
+// Decode prediction classes
 function decodePrediction(pred: any): DecodedDamage {
   const raw = pred.class.toUpperCase();
+  const confidence = pred.confidence; // Get confidence score
 
-  // Handle high-value flags
+  // 1. Handle Critical Flags
+  // Updated Critical Flags check for better Part specificity
   if (HIGH_VALUE_FLAGS.includes(raw)) {
+    let specificPart = "VEHICLE";
+
+    // Check if the critical flag implies a specific part type
+    if (raw.includes("GLASS") || raw.includes("SHATTER")) {
+      specificPart = "GLASS PANEL"; // More specific than VEHICLE
+    } else if (raw.includes("LIGHT")) {
+      specificPart = "LIGHTING SYSTEM";
+    }
+
     return {
-      part: "VEHICLE",
+      part: specificPart, // Use the more specific part
       defect_type: raw.replace(/_/g, ' '),
       severity: 'CRITICAL',
       paint_status: 'UNKNOWN',
-      repair_action: "MANUAL_REVIEW_REQUIRED",
-      confidence: pred.confidence,
+      repair_action: "MANUAL REVIEW REQUIRED",
+      confidence: confidence,
       raw_class: raw
     };
   }
 
-  // Parse standard format: COMPONENT_DEFECT_SEVERITY_PAINTSTATUS
+  // 2. Try to parse complex format: COMPONENT_DEFECT_SEVERITY_PAINTSTATUS
   const parts = raw.split('_');
 
+  // ---> SMART LOGIC FOR SIMPLE MODELS (Your Current Situation) <---
   if (parts.length < 4) {
+    // Calculate Severity based on Confidence Score
+    let severity: 'LOW' | 'MEDIUM' | 'HIGH' = 'LOW';
+    let action = "Inspect for Damage";
+
+    if (confidence > 0.75) {
+      severity = 'HIGH';
+      action = "Immediate Repair Recommended";
+    } else if (confidence > 0.50) {
+      severity = 'MEDIUM';
+      action = "Assessment Required";
+    }
+
     return {
-      part: "UNKNOWN",
-      defect_type: raw,
-      severity: 'LOW',
+      part: raw.replace(/_/g, ' '), // Fix: Use the class name (e.g. "REAR BUMPER") instead of "UNKNOWN"
+      defect_type: "Detected Issue",
+      severity: severity, // Fix: Use calculated severity based on confidence
       paint_status: 'UNKNOWN',
-      repair_action: "INSPECT",
-      confidence: pred.confidence,
+      repair_action: action,
+      confidence: confidence,
       raw_class: raw
     };
   }
 
+  // 3. Handle Complex Models (Future Proofing)
   const paintStatus = parts[parts.length - 1] as 'INTACT' | 'BROKEN';
   const severityCode = parts[parts.length - 2];
   const defectType = parts[parts.length - 3];
@@ -100,13 +125,10 @@ function generateAISummary(damages: DecodedDamage[]): string {
     narrative += `Moderate damage detected on ${moderate.length} panel${moderate.length > 1 ? 's' : ''} requiring refinishing. `;
   }
 
+  // Smart summary for simple models
   if (minor.length > 0) {
-    const pdrCandidates = minor.filter(m => m.repair_action.includes("PDR"));
-    if (pdrCandidates.length > 0) {
-      narrative += `Minor dents found on ${pdrCandidates.length} panel${pdrCandidates.length > 1 ? 's' : ''} are candidates for cost-saving PDR. `;
-    } else {
-      narrative += `Minor cosmetic imperfections noted. `;
-    }
+    const simpleParts = minor.map(m => m.part).join(', ');
+    narrative += `Visual anomalies detected on: ${simpleParts}. Please verify specific damages manually. `;
   }
 
   return narrative;
